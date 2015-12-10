@@ -18,29 +18,28 @@ static void input_menu(GameStateData *data,SDL_Event event)
 {
     MenuData *md = (MenuData*)data->data;
     switch(event.type){
-        default:
-            case SDL_KEYDOWN: {
-                if(!event.key.repeat && event.key.type == SDL_KEYDOWN){
-                    switch(event.key.keysym.sym){
-                        case SDLK_DOWN:
-                            add_tweener(menu_entry_size+md->selection,
-                                    unselected_size,600,TWEEN_ELASTICEASEOUT);
-                            md->selection = (md->selection + 1) % num_menu_entries;
-                            add_tweener(menu_entry_size+md->selection,1.f,600,
-                                    TWEEN_ELASTICEASEOUT);
-                            break;
-                        case SDLK_UP:
-                            add_tweener(menu_entry_size+md->selection,
-                                    unselected_size,600,TWEEN_ELASTICEASEOUT);
-                            md->selection = md->selection - 1;
-                            if(md->selection < 0) md->selection = num_menu_entries-1;
-                            add_tweener(menu_entry_size+md->selection,1.f,600,
-                                    TWEEN_ELASTICEASEOUT);
-                            break;
-                    }
+        case SDL_KEYDOWN: {
+            if(!event.key.repeat && event.key.type == SDL_KEYDOWN){
+                switch(event.key.keysym.sym){
+                    case SDLK_DOWN:
+                        add_tweener(menu_entry_size+md->selection,
+                                unselected_size,600,TWEEN_ELASTICEASEOUT);
+                        md->selection = (md->selection + 1) % num_menu_entries;
+                        add_tweener(menu_entry_size+md->selection,1.f,600,
+                                TWEEN_ELASTICEASEOUT);
+                        break;
+                    case SDLK_UP:
+                        add_tweener(menu_entry_size+md->selection,
+                                unselected_size,600,TWEEN_ELASTICEASEOUT);
+                        md->selection = md->selection - 1;
+                        if(md->selection < 0) md->selection = num_menu_entries-1;
+                        add_tweener(menu_entry_size+md->selection,1.f,600,
+                                TWEEN_ELASTICEASEOUT);
+                        break;
                 }
-            }break;
-            break;
+            }
+        }break;
+        default: break;
     }
 }
 
@@ -48,7 +47,7 @@ static void draw_menu(GameStateData *data)
 {
     MenuData *md = (MenuData*)data->data;
     int ystep = 60;
-    SDL_Color font_color = {255,255,255,255};
+    SDL_Color font_color = {0,0,0,255};
     u32 x,y;
     for(int i=0;i<num_menu_entries;i++){
         screen2pixels(0.5f,(float)(i+1)/(float)(num_menu_entries+1),&x,&y);

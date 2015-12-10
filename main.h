@@ -9,6 +9,16 @@
 #include <SDL2/SDL_ttf.h>
 #endif
 
+typedef struct
+{
+    float x,y;
+}vec2;
+
+typedef struct
+{
+    u32 x,y;
+}uvec2;
+
 typedef struct Tweener Tweener;
 
 typedef struct
@@ -34,6 +44,10 @@ void draw_text(TTF_Font *font,SDL_Color font_color, const char *message,s32 x,
 extern SDL_Renderer *renderer;
 extern TTF_Font *hud_font;
 extern TTF_Font *menu_font;
+extern u32 window_w;
+extern u32 window_h;
+extern u32 tile_w;
+extern u32 tile_h;
 
 enum {
     TWEEN_LINEARINTERPOLATION,

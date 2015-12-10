@@ -507,27 +507,27 @@ extern void stbte_set_layername(stbte_tilemap *tm, int layer, const char *layern
 #endif
 
 #ifndef STBTE_MAX_TILEMAP_X
-#define STBTE_MAX_TILEMAP_X      200
+#define STBTE_MAX_TILEMAP_X      40
 #endif
 
 #ifndef STBTE_MAX_TILEMAP_Y
-#define STBTE_MAX_TILEMAP_Y      200
+#define STBTE_MAX_TILEMAP_Y      40
 #endif
 
 #ifndef STBTE_MAX_LAYERS
-#define STBTE_MAX_LAYERS         8
+#define STBTE_MAX_LAYERS         3
 #endif
 
 #ifndef STBTE_MAX_CATEGORIES
-#define STBTE_MAX_CATEGORIES     100
+#define STBTE_MAX_CATEGORIES     8
 #endif
 
 #ifndef STBTE_MAX_COPY
-#define STBTE_MAX_COPY           65536
+#define STBTE_MAX_COPY           655
 #endif
 
 #ifndef STBTE_UNDO_BUFFER_BYTES
-#define STBTE_UNDO_BUFFER_BYTES  (1 << 24) // 16 MB
+#define STBTE_UNDO_BUFFER_BYTES  (1 << 12) // 16 MB
 #endif
 
 #ifndef STBTE_PROP_TYPE

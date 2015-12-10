@@ -4,12 +4,13 @@
 
 #include "editor.h"
 #include "menu.h"
-#include "easing.h"
-#include "stb_tilemap_editor.h"
+#include "game.h"
 
 #ifdef __EMSCRIPTEN__
 #include <emscripten.h>
 #endif
+
+#include "easing.h"
 
 static int GAME_QUIT = 0;
 void quit_game()
@@ -20,11 +21,14 @@ SDL_Renderer *renderer;
 
 GameState editor_state;
 GameState menu_state;
+GameState game_state;
 
-static GameState *game_state;
+static GameState *current_state;
 
-static u32 window_w = 800;
-static u32 window_h = 512;
+u32 window_w = 1200;
+u32 window_h = 800;
+u32 tile_w = 168;
+u32 tile_h = 124;
 
 float tmp1 = 1.0f;
 float tmp2 = 1.0f;
@@ -44,7 +48,7 @@ void add_tweener(float *subject, float value, u32 duration, u32 type)
 {
 
     u8 found_existing = 0;
-    Tweener *current = game_state->tweeners_head;
+    Tweener *current = current_state->tweeners_head;
     Tweener *previous = 0;
     //NOTE(Vidar): replace existing tweener if it points at the same variable
     while(current != 0) {
@@ -69,12 +73,12 @@ void add_tweener(float *subject, float value, u32 duration, u32 type)
         e->type     = type;
         e->subject  = subject;
         e->next     = 0;
-        if(game_state->tweeners_tail != 0){
-            game_state->tweeners_tail->next = e;
+        if(current_state->tweeners_tail != 0){
+            current_state->tweeners_tail->next = e;
         }
-        game_state->tweeners_tail = e;
-        if(game_state->tweeners_head == 0){
-            game_state->tweeners_head = e;
+        current_state->tweeners_tail = e;
+        if(current_state->tweeners_head == 0){
+            current_state->tweeners_head = e;
         }
     }
 }
@@ -119,7 +123,7 @@ float apply_tweening(float t, u32 type){
 
 void updateTweeners(u32 delta_ticks)
 {
-    Tweener *current = game_state->tweeners_head;
+    Tweener *current = current_state->tweeners_head;
     Tweener *previous = 0;
     while(current != 0) {
         u8 free_current = 0;
@@ -128,10 +132,10 @@ void updateTweeners(u32 delta_ticks)
             if(previous != 0){
                 previous->next = current->next;
             }else{
-                game_state->tweeners_head = current->next;
+                current_state->tweeners_head = current->next;
             }
-            if(game_state->tweeners_tail == current){
-                game_state->tweeners_tail = previous;
+            if(current_state->tweeners_tail == current){
+                current_state->tweeners_tail = previous;
             }
             current->time = current->duration;
             free_current = 1;
@@ -185,77 +189,91 @@ void draw_text(TTF_Font *font,SDL_Color font_color, const char *message,s32 x,
 
 }
 
-static void draw_fps(float dt)
+
+static u32 last_tick = 0;
+static float last_dt = 0;
+static const u32 num_prev_ticks = 16;
+static u32 current_prev_ticks = 0;
+static u32 prev_ticks[num_prev_ticks] = {};
+
+static void draw_fps()
 {
+    float dt = 0.f;
+    for(int i=0;i<num_prev_ticks;i++){
+        dt += prev_ticks[i]/1000.f;
+    }
+    dt *= 1.f/(float)num_prev_ticks;
     char fps_buffer[32] = {};
-    SDL_Color font_color = {255,255,255,255};
+    SDL_Color font_color = {0,0,0,255};
     sprintf(fps_buffer,"fps: %1.2f",1.f/dt);
     u32 x,y;
     screen2pixels(1.f,0.f,&x,&y);
     draw_text(hud_font,font_color,fps_buffer,x,y,1.f,0.f,1.f);
 }
 
-static u32 last_tick = 0;
-static float last_dt = 0;
 static void main_callback(void * vdata)
 {
     u32 current_tick = SDL_GetTicks();
     u32 delta_ticks = current_tick - last_tick;
-    if (delta_ticks > 16) {
-        float dt = (float)delta_ticks/1000.f;
-        last_tick = current_tick;
-        last_dt = dt;
+    float dt = (float)delta_ticks/1000.f;
+    last_tick = current_tick;
+    last_dt = dt;
+    current_prev_ticks = (current_prev_ticks + 1) % num_prev_ticks;
+    prev_ticks[current_prev_ticks] = delta_ticks;
 
-        // Input
-        SDL_Event event;
-        while(SDL_PollEvent(&event))
-        {
-            switch(event.type){
-                case SDL_QUIT: {
-                    quit_game();
-                }break;
-                case SDL_WINDOWEVENT: {
-                    switch (event.window.event){
-                        case SDL_WINDOWEVENT_SIZE_CHANGED:
-                            window_w = event.window.data1;
-                            window_h = event.window.data2;
+    // Input
+    SDL_Event event;
+    while(SDL_PollEvent(&event))
+    {
+        switch(event.type){
+            case SDL_QUIT: {
+                quit_game();
+            }break;
+            case SDL_WINDOWEVENT: {
+                switch (event.window.event){
+                    case SDL_WINDOWEVENT_RESIZED:
+                        window_w = event.window.data1;
+                        window_h = event.window.data2;
+                    break;
+                    default:break;
+                }
+            }break;
+            case SDL_KEYDOWN: {
+                switch(event.key.keysym.sym){
+                    case SDLK_1:
+                        current_state = &menu_state;
                         break;
-                        default:break;
-                    }
-                }break;
-                case SDL_KEYDOWN: {
-                    switch(event.key.keysym.sym){
-                        case SDLK_F1:
-                            game_state = &menu_state;
-                            break;
-                        case SDLK_F2:
-                            game_state = &editor_state;
-                            break;
-                        case SDLK_a:
-                            add_tweener(&tmp1,1.f,1800,TWEEN_EXPONENTIALEASEOUT);
-                            break;
-                        case SDLK_s:
-                            add_tweener(&tmp1,8.f,800,TWEEN_BOUNCEEASEOUT);
-                            break;
-                    }
-                }break;
-            }
-            game_state->input(game_state->data,event);
+                    case SDLK_2:
+                        current_state = &editor_state;
+                        break;
+                    case SDLK_3:
+                        current_state = &game_state;
+                        break;
+                    case SDLK_a:
+                        add_tweener(&tmp1,1.f,1800,TWEEN_EXPONENTIALEASEOUT);
+                        break;
+                    case SDLK_s:
+                        add_tweener(&tmp1,8.f,800,TWEEN_BOUNCEEASEOUT);
+                        break;
+                }
+            }break;
         }
-        // Update
-        updateTweeners(delta_ticks);
-        game_state->update(game_state->data,dt);
+        current_state->input(current_state->data,event);
     }
+    // Update
+    updateTweeners(delta_ticks);
+    current_state->update(current_state->data,dt);
     // Render
-    SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
+    SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
     SDL_RenderClear(renderer);
-    game_state->draw(game_state->data);
-    draw_fps(last_dt);
+    current_state->draw(current_state->data);
+    draw_fps();
     SDL_RenderPresent(renderer);
 }
 
 int main(int argc, char** argv) {
-
+    printf("tile_w: %d\n",tile_w);
+    printf("tile_h: %d\n",tile_h);
     SDL_Init(SDL_INIT_VIDEO);
     SDL_Window *window = SDL_CreateWindow("Ludum Dare 34",
         SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, window_w, window_h,
@@ -279,7 +297,8 @@ int main(int argc, char** argv) {
 
     editor_state = create_editor_state(window_w,window_h);
     menu_state   = create_menu_state();
-    game_state   = &menu_state;
+    game_state   = create_game_state();
+    current_state   = &game_state;
 
     add_tweener(&tmp1,5.f,1800,TWEEN_BACKEASEOUT);
     add_tweener(&tmp2,3.f,1600,TWEEN_CUBICEASEOUT);
